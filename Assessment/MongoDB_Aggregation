@@ -1,0 +1,34 @@
+db.sales.aggregate([
+  {
+    $unwind: "$items", // deconstruct the "items" array into separate documents
+  },
+  {
+    $project: {
+      store: 1, //store name
+      month: { $month: "$date" }, // get month from the date (ISODate)
+      year: { $year: "$date" }, // get year from the date (ISODate)
+      quantity: "$items.quantity", // get the quantity from items
+      price: "$items.price", // get the price from items
+      total: { $multiply: ["$quantity", "$price"] }, // calculate total
+    },
+  },
+  {
+    $group: {
+      _id: { store: "$store", month: { $toString: "$month" }, year: "$year" }, // group by store, month (as string), and year
+      totalRevenue: { $sum: "$total" }, // calculate total revenue
+      averagePrice: { $avg: "$price" }, // calculate average price
+    },
+  },
+  {
+    $sort: { _id: 1 }, // sort by store and month in asc
+  },
+  {
+    $project: {
+      _id: 0, // exclude the group identifier from the output
+      store: "$_id.store", // get the store name from the group
+      month: { $concat: ["$_id.month", "-", "$_id.year"] },
+      totalRevenue: "$totalRevenue",
+      averagePrice: "$averagePrice",
+    },
+  },
+]);
